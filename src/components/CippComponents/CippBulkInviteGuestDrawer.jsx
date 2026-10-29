@@ -128,6 +128,16 @@ export const CippBulkInviteGuestDrawer = ({
     });
   };
 
+  const handleOpenDrawer = () => {
+    formControl.reset({
+      tenantFilter: initialState.currentTenant,
+      sendInvite: true,
+      message: "",
+      bulkGuests: [],
+    });
+    setDrawerVisible(true);
+  };
+
   const actions = [
     {
       icon: <Delete />,
@@ -142,7 +152,7 @@ export const CippBulkInviteGuestDrawer = ({
     <>
       <PermissionButton
         requiredPermissions={requiredPermissions}
-        onClick={() => setDrawerVisible(true)}
+        onClick={handleOpenDrawer}
         startIcon={<GroupAdd />}
       >
         {buttonText}
