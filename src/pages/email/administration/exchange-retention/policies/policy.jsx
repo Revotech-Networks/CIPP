@@ -25,6 +25,13 @@ const RetentionPolicy = () => {
     },
   });
 
+  useEffect(() => {
+    if (!isEdit) {
+      formControl.setValue("tenantFilter", userSettingsDefaults.currentTenant);
+      formControl.setValue("RetentionPolicyTagLinks", []);
+    }
+  }, [isEdit, userSettingsDefaults.currentTenant, formControl]);
+
   // Get existing policy data if editing
   const existingPolicyRequest = ApiGetCall({
     url: `/api/ExecManageRetentionPolicies?tenantFilter=${userSettingsDefaults.currentTenant}${isEdit ? `&name=${encodeURIComponent(name)}` : ''}`,
@@ -104,7 +111,7 @@ const RetentionPolicy = () => {
               Name: values.Name,
               RetentionPolicyTagLinks: tagNames,
             }],
-            tenantFilter: values.tenantFilter,
+            tenantFilter: userSettingsDefaults.currentTenant,
           };
         }
       }}

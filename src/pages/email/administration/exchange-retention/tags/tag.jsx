@@ -31,6 +31,12 @@ const RetentionTag = () => {
     },
   });
 
+  useEffect(() => {
+    if (!isEdit) {
+      formControl.setValue("tenantFilter", userSettingsDefaults.currentTenant);
+    }
+  }, [isEdit, userSettingsDefaults.currentTenant, formControl]);
+
   // Get existing tag data if editing
   const existingTagRequest = ApiGetCall({
     url: `/api/ExecManageRetentionTags?tenantFilter=${userSettingsDefaults.currentTenant}${isEdit ? `&name=${encodeURIComponent(name)}` : ''}`,
@@ -158,7 +164,7 @@ const RetentionTag = () => {
               Type: typeof values.Type === 'string' ? values.Type : values.Type.value,
               ...tagData,
             }],
-            tenantFilter: values.tenantFilter,
+            tenantFilter: userSettingsDefaults.currentTenant,
           };
         }
       }}
