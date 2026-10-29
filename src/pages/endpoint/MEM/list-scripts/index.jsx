@@ -220,13 +220,7 @@ const Page = () => {
       })
 
       if (!response.ok) {
-        dispatch(
-          showToast({
-            title: 'Script Save Error',
-            message: 'Your Intune script could not be saved.',
-            type: 'error',
-          })
-        )
+        throw new Error('Your Intune script could not be saved.')
       }
 
       return response.json()
@@ -238,7 +232,17 @@ const Page = () => {
   const queryClient = useQueryClient()
 
   const saveCode = async () => {
-    const { data } = await saveScriptRefetch()
+    const { isError } = await saveScriptRefetch()
+    if (isError) {
+      dispatch(
+        showToast({
+          title: 'Script Save Error',
+          message: 'Your Intune script could not be saved.',
+          type: 'error',
+        })
+      )
+      return
+    }
     setCodeOpen(false)
     resetScriptState()
     dispatch(
