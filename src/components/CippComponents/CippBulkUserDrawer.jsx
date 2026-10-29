@@ -134,6 +134,16 @@ export const CippBulkUserDrawer = ({
     });
   };
 
+  const handleOpenDrawer = () => {
+    formControl.reset({
+      tenantFilter: initialState.currentTenant,
+      usageLocation: initialState.usageLocation || "US",
+      bulkUser: [],
+      licenses: [],
+    });
+    setDrawerVisible(true);
+  };
+
   const actions = [
     {
       icon: <Delete />,
@@ -148,7 +158,7 @@ export const CippBulkUserDrawer = ({
     <>
       <PermissionButton
         requiredPermissions={requiredPermissions}
-        onClick={() => setDrawerVisible(true)}
+        onClick={handleOpenDrawer}
         startIcon={<GroupAdd />}
       >
         {buttonText}
