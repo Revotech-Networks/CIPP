@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   Button,
   Typography,
@@ -795,6 +796,7 @@ const formatDatabaseContent = (data, selectedHeaders, format) => {
 /* ── Page ─────────────────────────────────────────────────── */
 const Page = () => {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const settings = useSettings()
   const { currentTenant } = settings
   const brandingSettings = useBrandingSettings()
@@ -944,6 +946,15 @@ const Page = () => {
   const saveTemplateCall = ApiPostCall({
     urlFromData: true,
     relatedQueryKeys: ['ListReportBuilderTemplates'],
+    onResult: () => {
+      if (templateId) {
+        // Evict before reopening can hydrate stale data during the delayed list invalidation.
+        queryClient.removeQueries({
+          queryKey: [`ListReportBuilderTemplates-builder-${templateId}`],
+          exact: true,
+        })
+      }
+    },
   })
 
   const deleteTemplateCall = ApiPostCall({
