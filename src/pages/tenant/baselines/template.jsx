@@ -99,12 +99,16 @@ const toOptionArray = (value) => {
   return entries.length > 0 ? entries : null
 }
 
+const createStageId = () =>
+  globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)
+
 const buildEditorStages = (templateDefinition) =>
   (
     templateDefinition?.stages ?? [
       { name: 'Default', standards: [], conditions: [], logic: 'and' },
     ]
   ).map((stage) => ({
+    id: createStageId(),
     name: stage.name,
     standards: [...stage.standards],
     // Saved per-instance configuration (variables + action posture) keyed by
@@ -209,7 +213,7 @@ const StagePanel = ({
       value && typeof value === 'object' && 'value' in value
         ? value.value
         : value
-    registerSerializer(stageIndex, () => {
+    registerSerializer(stage.id, () => {
       const values = formControl.getValues()
       return {
         name: stage.name,
@@ -243,7 +247,7 @@ const StagePanel = ({
         }),
       }
     })
-    return () => registerSerializer(stageIndex, null)
+    return () => registerSerializer(stage.id, null)
   })
 
   return (
@@ -659,6 +663,7 @@ const Page = () => {
     mutateStages((prev) => [
       ...prev,
       {
+        id: createStageId(),
         name: `Stage ${prev.length + 1}`,
         standards: [],
         standardConfigs: {},
@@ -684,6 +689,7 @@ const Page = () => {
       return [
         ...prev,
         {
+          id: createStageId(),
           name: `${source.name} (Copy)`,
           standards: [...source.standards],
           standardConfigs: { ...source.standardConfigs },
@@ -745,11 +751,11 @@ const Page = () => {
 
   const stageOccupancy = template?.occupancy ?? []
 
-  const registerSerializer = useCallback((index, serialize) => {
+  const registerSerializer = useCallback((id, serialize) => {
     if (serialize) {
-      stageSerializers.current[index] = serialize
+      stageSerializers.current[id] = serialize
     } else {
-      delete stageSerializers.current[index]
+      delete stageSerializers.current[id]
     }
   }, [])
 
@@ -809,8 +815,8 @@ const Page = () => {
         alertEmails: values.alertEmails,
         alertWebhookUrl: values.alertWebhookUrl,
         stages: stages.map(
-          (stage, index) =>
-            stageSerializers.current[index]?.() ?? {
+          (stage) =>
+            stageSerializers.current[stage.id]?.() ?? {
               name: stage.name,
               logic: 'and',
               conditions: [],
@@ -1054,7 +1060,7 @@ const Page = () => {
               >
                 {stages.map((stage, index) => (
                   <Tab
-                    key={index}
+                    key={stage.id}
                     label={`Stage ${index + 1}: ${stage.name}`}
                     value={index}
                   />
@@ -1064,7 +1070,7 @@ const Page = () => {
               <CardContent>
                 {stages.map((stage, index) => (
                   <StagePanel
-                    key={`${loadedTemplateId ?? 'new'}-${index}`}
+                    key={`${loadedTemplateId ?? 'new'}-${stage.id}`}
                     stageIndex={index}
                     stage={stage}
                     hidden={activeStage !== index}
