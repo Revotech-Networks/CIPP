@@ -11,6 +11,36 @@ export class BackupValidationError extends Error {
   }
 }
 
+// Syntax repair must leave quoted content, including escapes and unfinished strings, intact.
+const transformJsonSyntax = (jsonString, transform) => {
+  let result = "";
+  let start = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = 0; i < jsonString.length; i++) {
+    const char = jsonString[i];
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === "\\") {
+        escaped = true;
+      } else if (char === '"') {
+        inString = false;
+        result += jsonString.slice(start, i + 1);
+        start = i + 1;
+      }
+    } else if (char === '"') {
+      result += transform(jsonString.slice(start, i));
+      start = i;
+      inString = true;
+    }
+  }
+
+  const remainder = jsonString.slice(start);
+  return result + (inString ? remainder : transform(remainder));
+};
+
 export const BackupValidator = {
   /**
    * Validates a backup file before attempting to parse
@@ -93,22 +123,22 @@ export const BackupValidator = {
     const result = { success: false, repairedJson: jsonString, errors: [] };
 
     try {
-      let repaired = jsonString;
+      let braceBalance = 0;
+      let bracketBalance = 0;
 
-      // Fix 1: Remove trailing commas
-      repaired = repaired.replace(/,(\s*[}\]])/g, "$1");
+      // Fix 1: Remove trailing commas and count only structural brackets.
+      let repaired = transformJsonSyntax(jsonString, (syntax) => {
+        braceBalance += (syntax.match(/\{/g) || []).length - (syntax.match(/\}/g) || []).length;
+        bracketBalance += (syntax.match(/\[/g) || []).length - (syntax.match(/\]/g) || []).length;
+        return syntax.replace(/,(\s*[}\]])/g, "$1");
+      });
 
       // Fix 2: Basic bracket closure (skip newline repair for now)
-      const openBraces = (repaired.match(/\{/g) || []).length;
-      const closeBraces = (repaired.match(/\}/g) || []).length;
-      const openBrackets = (repaired.match(/\[/g) || []).length;
-      const closeBrackets = (repaired.match(/\]/g) || []).length;
-
-      if (openBraces - closeBraces > 0 && openBraces - closeBraces < 3) {
-        repaired += "}".repeat(openBraces - closeBraces);
+      if (braceBalance > 0 && braceBalance < 3) {
+        repaired += "}".repeat(braceBalance);
       }
-      if (openBrackets - closeBrackets > 0 && openBrackets - closeBrackets < 3) {
-        repaired += "]".repeat(openBrackets - closeBrackets);
+      if (bracketBalance > 0 && bracketBalance < 3) {
+        repaired += "]".repeat(bracketBalance);
       }
 
       // Test if repair worked
@@ -196,9 +226,9 @@ export const BackupValidator = {
         let repaired = beforeCorrupted + afterCorrupted;
 
         // Clean up any resulting syntax issues
-        repaired = repaired.replace(/,(\s*[}\]])/g, "$1");
-        repaired = repaired.replace(/\{\s*,/g, "{");
-        repaired = repaired.replace(/,\s*,/g, ",");
+        repaired = transformJsonSyntax(repaired, (syntax) =>
+          syntax.replace(/,(\s*[}\]])/g, "$1").replace(/\{\s*,/g, "{").replace(/,\s*,/g, ",")
+        );
 
         try {
           JSON.parse(repaired);
