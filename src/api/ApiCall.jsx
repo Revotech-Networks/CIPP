@@ -65,8 +65,9 @@ export function ApiGetCall(props) {
     enabled: waiting,
     queryKey: [queryKey],
     queryFn: async ({ signal }) => {
+      let responseData;
       if (bulkRequest && Array.isArray(data)) {
-        const results = [];
+        responseData = [];
         for (let i = 0; i < data.length; i++) {
           const element = data[i];
           const response = await axios.get(url, {
@@ -74,38 +75,11 @@ export function ApiGetCall(props) {
             params: element,
             headers: await buildVersionedHeaders(),
           });
-          results.push(response.data);
+          responseData.push(response.data);
           if (onResult) {
             onResult(response.data); // Emit each result as it arrives
           }
         }
-        if (relatedQueryKeys) {
-          const clearKeys = Array.isArray(relatedQueryKeys) ? relatedQueryKeys : [relatedQueryKeys];
-          setTimeout(() => {
-            // Separate wildcard patterns from exact keys
-            const wildcardPatterns = clearKeys.filter((key) => key.includes("*"));
-            const exactKeys = clearKeys.filter((key) => !key.includes("*"));
-
-            // Use single predicate call for all wildcard patterns
-            if (wildcardPatterns.length > 0) {
-              queryClient.invalidateQueries({
-                predicate: (query) => {
-                  if (!query.queryKey || !query.queryKey[0]) return false;
-                  const queryKeyStr = String(query.queryKey[0]);
-                  return wildcardPatterns.some((pattern) =>
-                    matchesWildcardPattern(queryKeyStr, pattern),
-                  );
-                },
-              });
-            }
-
-            // Handle exact keys
-            exactKeys.forEach((key) => {
-              queryClient.invalidateQueries({ queryKey: [key] });
-            });
-          }, 1000);
-        }
-        return results;
       } else {
         const response = await axios.get(url, {
           signal: url === "/api/tenantFilter" ? null : signal,
@@ -114,7 +88,7 @@ export function ApiGetCall(props) {
           responseType: responseType,
         });
 
-        let responseData = response.data;
+        responseData = response.data;
 
         // Convert blob to data URL if requested
         if (convertToDataUrl && responseType === "blob" && response.data) {
@@ -128,34 +102,34 @@ export function ApiGetCall(props) {
         if (onResult) {
           onResult(responseData); // Emit each result as it arrives
         }
-        if (relatedQueryKeys) {
-          const clearKeys = Array.isArray(relatedQueryKeys) ? relatedQueryKeys : [relatedQueryKeys];
-          setTimeout(() => {
-            // Separate wildcard patterns from exact keys
-            const wildcardPatterns = clearKeys.filter((key) => key.includes("*"));
-            const exactKeys = clearKeys.filter((key) => !key.includes("*"));
-
-            // Use single predicate call for all wildcard patterns
-            if (wildcardPatterns.length > 0) {
-              queryClient.invalidateQueries({
-                predicate: (query) => {
-                  if (!query.queryKey || !query.queryKey[0]) return false;
-                  const queryKeyStr = String(query.queryKey[0]);
-                  return wildcardPatterns.some((pattern) =>
-                    matchesWildcardPattern(queryKeyStr, pattern),
-                  );
-                },
-              });
-            }
-
-            // Handle exact keys
-            exactKeys.forEach((key) => {
-              queryClient.invalidateQueries({ queryKey: [key] });
-            });
-          }, 1000);
-        }
-        return responseData;
       }
+      if (relatedQueryKeys) {
+        const clearKeys = Array.isArray(relatedQueryKeys) ? relatedQueryKeys : [relatedQueryKeys];
+        setTimeout(() => {
+          // Separate wildcard patterns from exact keys
+          const wildcardPatterns = clearKeys.filter((key) => key.includes("*"));
+          const exactKeys = clearKeys.filter((key) => !key.includes("*"));
+
+          // Use single predicate call for all wildcard patterns
+          if (wildcardPatterns.length > 0) {
+            queryClient.invalidateQueries({
+              predicate: (query) => {
+                if (!query.queryKey || !query.queryKey[0]) return false;
+                const queryKeyStr = String(query.queryKey[0]);
+                return wildcardPatterns.some((pattern) =>
+                  matchesWildcardPattern(queryKeyStr, pattern),
+                );
+              },
+            });
+          }
+
+          // Handle exact keys
+          exactKeys.forEach((key) => {
+            queryClient.invalidateQueries({ queryKey: [key] });
+          });
+        }, 1000);
+      }
+      return responseData;
     },
     staleTime: staleTime,
     refetchOnWindowFocus: refetchOnWindowFocus,
